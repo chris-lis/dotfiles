@@ -1,0 +1,22 @@
+return {
+    -- 'folke/noice.nvim',
+    -- dependencies = {
+    --     'MunifTanjim/nui.nvim',
+    --     -- {
+    --     --     'rcarriga/nvim-notify',
+    --     --     config = function ()
+    --     --         require('notify').setup({
+    --     --             render = 'compact',
+    --     --             stages = 'static',
+    --     --         })
+    --     --         vim.notify = require('notify')
+    --     --     end
+    --     -- }
+    -- },
+    -- opts = {
+    --     notify = { enabled = false },
+    --     lsp = {
+    --         progress = { enabled = false }
+    --     }
+    -- }
+}
