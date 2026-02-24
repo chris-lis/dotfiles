@@ -34,9 +34,22 @@ return {
             }
         },
 
-        default = { 'lsp', 'path', 'snippets', 'lazydev' },
-        providers = {
-            lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
+        sources = {
+            default = { 'lsp', 'path', 'snippets', 'lazydev' },
+            per_filetype = {
+                org = { 'orgmode' },
+            },
+            providers = {
+                orgmode = {
+                    name = 'Orgmode',
+                    module = 'orgmode.org.autocompletion.blink',
+                    fallbacks = { 'buffer' }
+                },
+                lazydev = {
+                    module = 'lazydev.integrations.blink',
+                    score_offset = 100,
+                }
+            },
         },
 
         signature = { enabled = true },

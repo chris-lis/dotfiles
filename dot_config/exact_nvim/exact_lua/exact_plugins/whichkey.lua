@@ -7,6 +7,7 @@ return {
             { '<leader>f', group = 'find...' },
             { 'g', group = 'global/go to...' },
             { 'gr', group = 'LSP' },
+            { 'o', group = 'Orgmode' },
         },
     },
 }
