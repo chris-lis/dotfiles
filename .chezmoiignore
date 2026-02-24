@@ -1,2 +1,9 @@
 # MacOS directory metadata
 /**/.DS_Store
+
+# Only on MacOS
+{{ if ne .chezmoi.os "darwin" }}
+
+.config/linearmouse/*
+
+{{ end }}
