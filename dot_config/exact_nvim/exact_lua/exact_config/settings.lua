@@ -12,7 +12,7 @@ if vim.g.neovide then
     -- TODO: Decide if you like opacity or not
     --
     -- vim.g.neovide_opacity = 0.9
-    vim.g.neovide_window_blurred = true
+    -- vim.g.neovide_window_blurred = true
 
     -- Proposed temp fix for high GPU usage
     vim.g.neovide_show_border = true

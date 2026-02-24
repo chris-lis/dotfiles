@@ -54,9 +54,16 @@ return {
 
                     if client.name == 'ruff' then
                         client.server_capabilities.hoverProvider = false
-                    end
-                    if client.name == 'pyrefly' then
-                        -- TODO: Anything here? Consider adding basedpyright to the mix
+                        -- client.server_capabilities.codeActionProvider = false
+                    elseif client.name == 'ty' then
+                        -- TODO:
+                    elseif client.name == 'pyrefly' then
+                        -- doesn't really work
+                        -- client.server_capabilities.diagnosticProvider = false
+                        client.server_capabilities.documentFormattingProvider = false
+                        client.server_capabilities.documentRangeFormattingProvider = false
+                        -- client.server_capabilities.inlayHintProvider = false
+                        client.server_capabilities.positionEncoding = 'utf-8'
                     end
 
                 end
