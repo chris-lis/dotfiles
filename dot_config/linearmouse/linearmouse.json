@@ -30,7 +30,7 @@
           "vertical" : true
         },
         "speed" : {
-          "vertical" : 96
+          "vertical" : 48
         }
       }
     },
@@ -46,6 +46,21 @@
       "scrolling" : {
         "speed" : {
           "vertical" : 0
+        }
+      }
+    },
+    {
+      "if" : {
+        "device" : {
+          "category" : "mouse",
+          "productID" : "0xc08d",
+          "productName" : "G502 LIGHTSPEED Wireless Gaming Mouse",
+          "vendorID" : "0x46d"
+        }
+      },
+      "scrolling" : {
+        "reverse" : {
+          "vertical" : true
         }
       }
     }
