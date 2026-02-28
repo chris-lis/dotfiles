@@ -1,0 +1,16 @@
+{{- $env_choices := list "personal" "perceptive-space" -}}
+{{- $env := promptChoiceOnce . "env" "Pick environmnet to set up" $env_choices -}}
+
+{{- $default_git_email := "" -}}
+{{- if eq $env "personal" -}}
+{{-   $default_git_email = "32350102+chris-lis@users.noreply.github.com" -}}
+{{- end -}}
+
+{{- $git_email := promptStringOnce . "git.email" "Enter git email" $default_git_email -}}
+
+[data]
+    env = {{ $env | quote }}
+
+[data.git]
+    email = {{ $git_email | quote }}
+
