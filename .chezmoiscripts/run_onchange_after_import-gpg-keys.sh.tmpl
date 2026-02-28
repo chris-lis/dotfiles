@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: ft=bash
 
 set -e
 
