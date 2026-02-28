@@ -1,3 +1,5 @@
+# vim: ft=toml
+
 {{- $env_choices := list "personal" "perceptive-space" -}}
 {{- $env := promptChoiceOnce . "env" "Pick environmnet to set up" $env_choices -}}
 
@@ -13,4 +15,3 @@
 
 [data.git]
     email = {{ $git_email | quote }}
-

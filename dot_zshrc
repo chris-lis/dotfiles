@@ -1,3 +1,5 @@
+# vim: ft=zsh
+
 if [ "$(arch)" = "arm64" ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 else
@@ -113,6 +115,9 @@ setopt glob_dots     # no special treatment for file names with a leading dot
 setopt no_auto_menu  # require an extra TAB press to open the completion menu
 
 ### Custom Config
+
+# Setup default editor
+export EDITOR=nvim
 
 # Enable fzf
 source <(fzf --zsh)
