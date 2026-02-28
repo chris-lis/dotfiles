@@ -1,0 +1,45 @@
+# Appearance
+theme = Monokai Pro
+background = #1e1f1c
+background-opacity = 0.85
+# background-opacity-cells = true
+background-blur = true
+maximize = true
+
+mouse-hide-while-typing = true
+
+# Font
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 14.5
+font-thicken = true
+font-feature = calt
+font-feature = liga
+
+# Window
+macos-titlebar-style = tabs
+window-padding-x = 8
+window-padding-y = 0,8
+window-padding-balance = true
+window-padding-color = extend
+
+adjust-cell-height = 20%
+adjust-cell-width = 2%
+
+# Shell Integration
+shell-integration = detect
+
+# Clipboard & Selection
+copy-on-select = false
+
+# Quick Terminal
+quick-terminal-position = center
+quick-terminal-size = 50%
+
+# Keybindings
+confirm-close-surface = true
+keybind = global:ctrl+grave_accent=toggle_quick_terminal
+keybind = cmd+z=unbind
+
+macos-option-as-alt = left
+macos-secure-input-indication = false
+
