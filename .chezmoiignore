@@ -1,7 +1,7 @@
 # MacOS directory metadata
 /**/.DS_Store
 
-# Only on MacOS
+# Ignore when not on MacOS
 {{ if ne .chezmoi.os "darwin" }}
 
 .chezmoiscripts/*.darwin.sh
@@ -9,3 +9,5 @@
 Library
 
 {{ end }}
+
+.config/nvim/lazy-lock.json
