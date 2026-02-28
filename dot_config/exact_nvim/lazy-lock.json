@@ -1,5 +1,6 @@
 {
   "blink.cmp": { "branch": "main", "commit": "4b18c32adef2898f95cdef6192cbd5796c1a332d" },
+  "chezmoi.nvim": { "branch": "main", "commit": "ad26a6c4f5be0c348612518fcb1b7116649e026f" },
   "fzf-lua": { "branch": "main", "commit": "fc42c4c9552c6c0d691a16858f3bd65745fef13f" },
   "gitsigns.nvim": { "branch": "main", "commit": "9f3c6dd7868bcc116e9c1c1929ce063b978fa519" },
   "gruvbox-material": { "branch": "master", "commit": "790afe9dd085aa04eccd1da3626c5fa05c620e53" },

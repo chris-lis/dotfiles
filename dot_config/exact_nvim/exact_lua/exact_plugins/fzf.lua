@@ -26,7 +26,8 @@ return {
         { '<leader>fd', function () FzfLua.zoxide() end, desc = 'directories with zoxide' },
         { '<leader>fb', function () FzfLua.buffers() end, desc = 'buffers' },
         { '<leader>f.', function () FzfLua.oldfiles() end, desc = 'recent files' },
-        { '<leader>fn', function () FzfLua.files({ cwd = '~/.config/nvim/' }) end, desc = 'Neovim configuration files' },
+        -- Managed by chezmoi.nvim
+        -- { '<leader>fn', function () FzfLua.files({ cwd = '~/.config/nvim/' }) end, desc = 'Neovim configuration files' },
         { '<leader>fh', function () FzfLua.helptags() end, desc = 'help' },
         { '<leader>fk', function () FzfLua.keymaps() end, desc = 'keymaps' },
         { '<leader>fz', function () FzfLua.builtin() end, desc = 'fzf-lua pickers' },
