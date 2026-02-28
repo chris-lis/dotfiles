@@ -2,10 +2,10 @@
 
 set -e
 
-# gpg-pubkeyring-hash: {{ include ".gnupg/pubring-backup.asc" | sha256sum }}
+# gpg-pubkeyring-backup-hash: {{ joinPath .chezmoi.sourceDir "private_dot_gnupg/pubring-backup.asc" | include | sha256sum }}
 echo "Importing GPG public keys..."
 gpg --import ~/.gnupg/pubring-backup.asc
 
-# gpg-ownertrust-hash: {{ include ".gnupg/ownertrust-backup.txt" | sha256sum }}
+# gpg-ownertrust-backup-hash: {{ joinPath .chezmoi.sourceDir "private_dot_gnupg/ownertrust-backup.txt" | include | sha256sum }}
 echo "Importing GPG owner trust..."
 gpg --import-ownertrust ~/.gnupg/ownertrust-backup.txt
