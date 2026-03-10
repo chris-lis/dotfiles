@@ -3,7 +3,7 @@
   "schemes" : [
     {
       "buttons" : {
-        "universalBackForward" : false
+        "universalBackForward" : true
       },
       "if" : {
         "device" : {
@@ -26,11 +26,10 @@
         "distance" : {
           "vertical" : "auto"
         },
-        "reverse" : {
-          "vertical" : true
-        },
+        "reverse" : true,
         "speed" : {
-          "vertical" : 48
+          "horizontal" : 64,
+          "vertical" : 16
         }
       }
     },
