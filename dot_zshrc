@@ -131,6 +131,10 @@ zstyle ':completion::complete:*' use-cache 1
 eval $(thefuck --alias)
 THEFUCK_ALTER_HISTORY='true'
 
+# Cloudflare WARP start/stop
+alias warp-start='sudo launchctl bootstrap system /Library/LaunchDaemons/com.cloudflare.1dot1dot1dot1.macos.warp.daemon.plist'
+alias warp-stop='sudo launchctl bootout system/com.cloudflare.1dot1dot1dot1.macos.warp.daemon'
+
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/opt/homebrew/Caskroom/miniforge/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
