@@ -133,7 +133,7 @@ THEFUCK_ALTER_HISTORY='true'
 
 # Cloudflare WARP start/stop
 alias warp-start='sudo launchctl bootstrap system /Library/LaunchDaemons/com.cloudflare.1dot1dot1dot1.macos.warp.daemon.plist'
-alias warp-stop='sudo launchctl bootout system/com.cloudflare.1dot1dot1dot1.macos.warp.daemon'
+alias warp-stop='sudo launchctl bootout system/com.cloudflare.1dot1dot1dot1.macos.warp.daemon && sudo pkill -f "Cloudflare WARP"'
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
