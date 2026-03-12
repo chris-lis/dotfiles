@@ -34,7 +34,7 @@ vim.o.signcolumn = 'yes'
 vim.o.cursorline = true
 
 -- Keep at least this many lines from edge
-vim.o.scrolloff = 10
+vim.o.scrolloff = 100
 
 -- Don't show mode in cmd line
 vim.o.showmode = false
