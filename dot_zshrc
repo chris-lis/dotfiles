@@ -119,6 +119,9 @@ setopt no_auto_menu  # require an extra TAB press to open the completion menu
 # Setup default editor
 export EDITOR=nvim
 
+# mlflow tracking username
+export MLFLOW_TRACKING_USERNAME=chris-lis
+
 # Enable fzf
 source <(fzf --zsh)
 
