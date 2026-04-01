@@ -11,3 +11,7 @@ Library
 {{ end }}
 
 .config/nvim/lazy-lock.json
+
+# Claude Code configuration
+.claude
+.config/nvim/.claude
