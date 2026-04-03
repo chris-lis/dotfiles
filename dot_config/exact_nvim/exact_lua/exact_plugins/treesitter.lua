@@ -10,6 +10,7 @@ return {
         local ensure_installed = {
             'rust',
             'python',
+            'swift',
 
             'bash',
             'diff',

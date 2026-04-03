@@ -20,6 +20,7 @@ return {
                         'rust-analyzer',
                         -- 'ty',
                         'pyrefly',
+                        'sourcekit-lsp',
 
                         -- Debuger Adapters
                         'codelldb',
