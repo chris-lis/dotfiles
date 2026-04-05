@@ -32,15 +32,6 @@ return {{
                     LazyNormal = { bg = theme.ui.bg_m3, fg = theme.ui.fg_dim },
                     MasonNormal = { bg = theme.ui.bg_m3, fg = theme.ui.fg_dim },
 
-                    -- Borderless Telescope
-                    TelescopeTitle = { fg = theme.ui.special, bold = true },
-                    TelescopePromptNormal = { bg = theme.ui.bg_p1 },
-                    TelescopePromptBorder = { fg = theme.ui.bg_p1, bg = theme.ui.bg_p1 },
-                    TelescopeResultsNormal = { fg = theme.ui.fg_dim, bg = theme.ui.bg_m1 },
-                    TelescopeResultsBorder = { fg = theme.ui.bg_m1, bg = theme.ui.bg_m1 },
-                    TelescopePreviewNormal = { bg = theme.ui.bg_dim },
-                    TelescopePreviewBorder = { bg = theme.ui.bg_dim, fg = theme.ui.bg_dim },
-
                     -- Dark completion (popup) menu
                     Pmenu = { fg = theme.ui.shade0, bg = theme.ui.bg_p1 },  -- add `blend = vim.o.pumblend` to enable transparency
                     PmenuSel = { fg = "NONE", bg = theme.ui.bg_p2 },
@@ -55,8 +46,7 @@ return {{
 },
 {
     'ramojus/mellifluous.nvim',
-    lazy = false,
-    priority = 1000,
+    lazy = true,
     config = function ()
         require('mellifluous').setup({
             flat_background = {
@@ -64,39 +54,28 @@ return {{
             },
             dim_inactive = true,
         })
-
-        -- vim.cmd.colorscheme 'mellifluous'
     end
 },
     -- Overall, pretty, but has issues, e.g., autocompletion has selection that's invisible
     {
         'rose-pine/neovim',
         name = 'rose-pine',
-        priority = 999,
+        lazy = true,
         config = function ()
-
-            -- require('rose-pine.utilities')
-
             require('rose-pine').setup({
                 variant = 'moon',
-
                 dim_inactive_windows = true,
-
                 palette = {
                     moon = {
                         base = '#191724',
                         surface = '#1f1d2e',
                         overlay = '#26233a',
-
-
                     }
                 }
             })
-
-            -- vim.cmd.colorscheme 'rose-pine'
         end
     },
-    {'EdenEast/nightfox.nvim'},
-    {'sainnhe/sonokai'},
-    {'sainnhe/gruvbox-material'},
+    { 'EdenEast/nightfox.nvim', lazy = true },
+    { 'sainnhe/sonokai', lazy = true },
+    { 'sainnhe/gruvbox-material', lazy = true },
 }

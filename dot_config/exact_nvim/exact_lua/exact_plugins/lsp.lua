@@ -80,9 +80,40 @@ return {
                         client.server_capabilities.documentFormattingProvider = false
                         client.server_capabilities.documentRangeFormattingProvider = false
                         -- client.server_capabilities.inlayHintProvider = false
-                        client.server_capabilities.positionEncoding = 'utf-8'
                     end
 
+                end
+            })
+
+            -- Enable inlay hints and code lenses on attach
+            vim.api.nvim_create_autocmd('LspAttach', {
+                group = vim.api.nvim_create_augroup('lsp_attach_features', { clear = true }),
+                callback = function(args)
+                    local client = vim.lsp.get_client_by_id(args.data.client_id)
+                    if not client then return end
+                    local bufnr = args.buf
+
+                    if client:supports_method('textDocument/inlayHint') then
+                        vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+                        vim.keymap.set('n', '<leader>ti', function()
+                            vim.lsp.inlay_hint.enable(
+                                not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }),
+                                { bufnr = bufnr }
+                            )
+                        end, { buffer = bufnr, desc = 'toggle [i]nlay hints' })
+                    end
+
+                    if client:supports_method('textDocument/codeLens') then
+                        vim.lsp.codelens.enable(true, { bufnr = bufnr })
+                        vim.keymap.set('n', 'grl', vim.lsp.codelens.run,
+                            { buffer = bufnr, desc = 'LSP: Run code [l]ens' })
+                    end
+
+                    if client:supports_method('textDocument/foldingRange') then
+                        vim.wo.foldmethod = 'expr'
+                        vim.wo.foldexpr = 'v:lua.vim.lsp.foldexpr()'
+                        vim.wo.foldlevel = 99
+                    end
                 end
             })
 
@@ -99,20 +130,7 @@ return {
                         [vim.diagnostic.severity.HINT] = '󰌶 ',
                     },
                 },
-                virtual_text = {
-                    source = 'if_many',
-                    spacing = 2,
-                    -- TODO: figure it out; I don't understand why would this be needed???
-                    format = function (diagnostic)
-                        local diagnostic_message = {
-                            [vim.diagnostic.severity.ERROR] = diagnostic.message,
-                            [vim.diagnostic.severity.WARN]  = diagnostic.message,
-                            [vim.diagnostic.severity.INFO]  = diagnostic.message,
-                            [vim.diagnostic.severity.HINT]  = diagnostic.message,
-                        }
-                        return diagnostic_message[diagnostic.severity]
-                    end
-                },
+                virtual_lines = { only_current_line = true },
             })
 
         end

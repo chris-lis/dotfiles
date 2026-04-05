@@ -5,9 +5,12 @@ return {
         delay = 0,
         spec = {
             { '<leader>f', group = 'find...' },
-            { 'g', group = 'global/go to...' },
-            { 'gr', group = 'LSP' },
-            { 'o', group = 'Orgmode' },
+            { '<leader>t', group = 'toggle...' },
+            { '<leader>h', group = 'git hunks...' },
+            { '<leader>g', group = 'git...' },
+            { '<leader>d', group = 'debug...' },
+            { 'g',         group = 'global/go to...' },
+            { 'gr',        group = 'LSP' },
         },
     },
 }

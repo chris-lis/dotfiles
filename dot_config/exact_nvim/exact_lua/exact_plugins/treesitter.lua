@@ -54,7 +54,9 @@ return {
                 end
 
                 if not vim.list_contains(exclude_fold, ctx.match) then
+                    vim.wo.foldmethod = 'expr'
                     vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+                    vim.wo.foldlevel = 99
                 end
             end,
         })
