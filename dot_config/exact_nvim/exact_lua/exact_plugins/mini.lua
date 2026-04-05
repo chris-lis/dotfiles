@@ -12,7 +12,18 @@ return {
         -- These were clashing with each other and now they don't
         -- For some reason; I didn't change anything & there was no update?
         require('mini.ai').setup()
-        require('mini.surround').setup()
+        -- Prefix moved from 's' to 'gs' to free 's' for flash.nvim
+        require('mini.surround').setup({
+            mappings = {
+                add            = 'gsa',
+                delete         = 'gsd',
+                find           = 'gsf',
+                find_left      = 'gsF',
+                highlight      = 'gsh',
+                replace        = 'gsr',
+                update_n_lines = 'gsn',
+            },
+        })
 
         -- TODO: actually learn and remmeber what are those extra objects
         require('mini.extra').setup() -- who doesn't like more text objects
@@ -20,8 +31,6 @@ return {
         -- GOAT: gS to toggle arguments inline or each on its own line
         require('mini.splitjoin').setup()
 
-        -- Trial it out: f,F,t,T across lines & repeatable
-        require('mini.jump').setup()
         -- Trial it out: movement using [ and ]
         require('mini.bracketed').setup()
 
@@ -31,6 +40,7 @@ return {
 
         -- Trial it out: preserve window layout on buffer remove
         require('mini.bufremove').setup()
+        vim.keymap.set('n', '<leader>bd', MiniBufremove.delete, { desc = 'Delete buffer (preserve layout)' })
 
 
         require('mini.statusline').setup({

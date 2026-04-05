@@ -26,6 +26,7 @@ return {
 
                         -- Formatters
                         'ruff',
+                        'stylua',
 
                         -- Others
                     },
