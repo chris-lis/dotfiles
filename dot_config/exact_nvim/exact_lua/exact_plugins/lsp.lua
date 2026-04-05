@@ -20,7 +20,6 @@ return {
                         'rust-analyzer',
                         -- 'ty',
                         'pyrefly',
-                        'sourcekit-lsp',
 
                         -- Debuger Adapters
                         'codelldb',
@@ -39,6 +38,23 @@ return {
         },
         config = function()
             -- TODO: Mapping, config, etc.
+
+            -- sourcekit-lsp is bundled with Xcode/CLI tools, not available via mason
+            -- macOS only; guarded by SDK availability check
+            if vim.fn.has('mac') == 1 then
+                vim.fn.system('xcrun --find sourcekit-lsp 2>/dev/null')
+                if vim.v.shell_error == 0 then
+                    vim.lsp.config('sourcekit', {
+                        cmd = {
+                            'xcrun', 'sourcekit-lsp',
+                            '--experimental-feature', 'background-indexing',
+                        },
+                        filetypes = { 'swift', 'objective-c', 'objective-cpp' },
+                        root_markers = { 'Package.swift', '.git' },
+                    })
+                    vim.lsp.enable('sourcekit')
+                end
+            end
 
             -- Configure Python linter/formatter and typechecker
 
