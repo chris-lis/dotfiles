@@ -13,5 +13,11 @@ Library
 .config/nvim/lazy-lock.json
 
 # Claude Code configuration
-.claude
+# Guard against `chezmoi add -r ~/.claude` pulling in history.jsonl, sessions/
+# or projects/. Single-star is required: `.claude/**` silently defeats the
+# negations below. Note chezmoi already ignores the repo's own .claude/ dir,
+# since source entries beginning with "." are skipped automatically.
+.claude/*
+!.claude/settings.json
+!.claude/statusline-command.sh
 .config/nvim/.claude
