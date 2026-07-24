@@ -13,3 +13,12 @@
 
 [data.git]
     email = {{ $git_email | quote }}
+
+# Three-way merge in nvim rather than the default bare `vimdiff`, which is
+# /usr/bin/vim and picks up none of the nvim config. Because args contains no
+# template variables, chezmoi appends .Destination, .Source and .Target itself.
+# Pane order is therefore: destination (live file), source (THIS repo — the
+# pane to edit), target (a temp file; edits there are discarded).
+[merge]
+    command = "nvim"
+    args = ["-d"]
