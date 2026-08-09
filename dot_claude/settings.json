@@ -1,9 +1,12 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "statusLine": {
     "type": "command",
     "command": "bash \"$HOME/.claude/statusline-command.sh\""
   },
-  "syntaxHighlightingDisabled": false,
   "editorMode": "normal",
   "autoCompactEnabled": true,
   "autoScrollEnabled": false
