@@ -4,10 +4,12 @@ return {
     opts = {
         delay = 0,
         spec = {
+            { '<leader>a', group = 'AI/Claude...' },
             { '<leader>f', group = 'find...' },
             { '<leader>t', group = 'toggle...' },
             { '<leader>h', group = 'git hunks...' },
             { '<leader>g', group = 'git...' },
+            { '<leader>gd', group = 'diffview...' },
             { '<leader>d', group = 'debug...' },
             { '<leader>T', group = 'test...' },
             { '<leader>c', group = 'code...' },
