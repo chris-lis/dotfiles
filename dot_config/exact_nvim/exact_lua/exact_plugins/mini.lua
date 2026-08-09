@@ -11,7 +11,15 @@ return {
         -- GOAT: Text objects and operations for inside/arround/surround
         -- These were clashing with each other and now they don't
         -- For some reason; I didn't change anything & there was no update?
-        require('mini.ai').setup()
+        -- Default `f` is a function *call*; these make af/if and ac/ic resolve
+        -- to function and class definitions via treesitter.
+        local ai = require('mini.ai')
+        ai.setup({
+            custom_textobjects = {
+                f = ai.gen_spec.treesitter({ a = '@function.outer', i = '@function.inner' }),
+                c = ai.gen_spec.treesitter({ a = '@class.outer', i = '@class.inner' }),
+            },
+        })
         -- Prefix moved from 's' to 'gs' to free 's' for flash.nvim
         require('mini.surround').setup({
             mappings = {

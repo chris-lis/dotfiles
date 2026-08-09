@@ -5,6 +5,11 @@ return {
     lazy = false,
     branch = 'main',
     build = ':TSUpdate',
+    dependencies = {
+        -- Installed for its `textobjects` query files only; mini.ai reads them
+        -- via vim.treesitter.query.get to resolve @function/@class captures.
+        { 'nvim-treesitter/nvim-treesitter-textobjects', branch = 'main' },
+    },
     config = function()
         -- List of parsers to install
         local ensure_installed = {
