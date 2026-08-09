@@ -1,5 +1,7 @@
 # MacOS directory metadata
-/**/.DS_Store
+# A bare `.DS_Store` would only match at the root: chezmoi matches full target
+# paths, not base names. (A leading slash before `**` is rejected outright.)
+**/.DS_Store
 
 # Ignore when not on MacOS
 {{ if ne .chezmoi.os "darwin" }}

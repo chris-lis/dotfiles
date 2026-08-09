@@ -40,20 +40,35 @@ return {
             :totable()
         )
 
+        -- Parser names are not filetypes: `bash` highlights `sh`, `vimdoc` covers
+        -- `help`/`checkhealth`, `diff` covers `gitdiff`. Using the parser list as
+        -- the autocmd pattern silently skips those filetypes.
+        local filetypes = {}
+        for _, parser in ipairs(ensure_installed) do
+            for _, ft in ipairs(vim.treesitter.language.get_filetypes(parser)) do
+                filetypes[ft] = true
+            end
+        end
+
         -- Setup autocmds to launch TreeSitter on supported file open
         local group = vim.api.nvim_create_augroup('treesitter-start', { clear = true })
         vim.api.nvim_create_autocmd('FileType', {
             desc = 'Activate TreeSitter for supported file types.',
             group = group,
-            pattern = ensure_installed,
+            pattern = vim.tbl_keys(filetypes),
             callback = function(ctx)
                 vim.treesitter.start()
 
                 if not vim.list_contains(exclude_indent, ctx.match) then
-                    vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+                    vim.bo[ctx.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
                 end
 
-                if not vim.list_contains(exclude_fold, ctx.match) then
+                -- Fold options are window-local, so guard on the buffer being
+                -- displayed: FileType also fires for buffers loaded without a
+                -- window (:bufdo, quickfix, picker previews), where `vim.wo`
+                -- would leak onto an unrelated window.
+                if not vim.list_contains(exclude_fold, ctx.match)
+                    and vim.api.nvim_win_get_buf(0) == ctx.buf then
                     vim.wo.foldmethod = 'expr'
                     vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
                     vim.wo.foldlevel = 99
