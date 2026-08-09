@@ -30,7 +30,10 @@ return {
 
                         -- Others
                     },
-                    auto_update = true,
+                    -- Off deliberately: auto-updating pulled rust-analyzer ahead
+                    -- of the installed rust toolchain, which RA then refuses to
+                    -- work with. Update via :MasonToolsUpdate alongside `rustup`.
+                    auto_update = false,
                 }
             },
             -- TODO: Do these need to be listed here?
@@ -119,6 +122,29 @@ return {
                         vim.wo.foldmethod = 'expr'
                         vim.wo.foldexpr = 'v:lua.vim.lsp.foldexpr()'
                         vim.wo.foldlevel = 99
+                    end
+                end
+            })
+
+            -- Without this, a server that stops (crash, :LspStop) leaves the
+            -- window on vim.lsp.foldexpr, which then reports no folds at all.
+            vim.api.nvim_create_autocmd('LspDetach', {
+                group = vim.api.nvim_create_augroup('lsp_detach_folding', { clear = true }),
+                callback = function(args)
+                    if vim.api.nvim_win_get_buf(0) ~= args.buf then return end
+                    if vim.wo.foldexpr ~= 'v:lua.vim.lsp.foldexpr()' then return end
+
+                    for _, client in ipairs(vim.lsp.get_clients({ bufnr = args.buf })) do
+                        if client.id ~= args.data.client_id
+                            and client:supports_method('textDocument/foldingRange') then
+                            return
+                        end
+                    end
+
+                    if vim.treesitter.highlighter.active[args.buf] then
+                        vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+                    else
+                        vim.wo.foldmethod = 'manual'
                     end
                 end
             })

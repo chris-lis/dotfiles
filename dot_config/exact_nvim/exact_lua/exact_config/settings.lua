@@ -79,3 +79,6 @@ vim.o.timeoutlen = 300
 
 -- Raise dialog to confirm insdead of failing
 vim.o.confirm = true
+
+-- Keep undo history across sessions (in stdpath('state')/undo)
+vim.o.undofile = true
