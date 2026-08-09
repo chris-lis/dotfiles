@@ -60,8 +60,8 @@ return {
     {
         'NeogitOrg/neogit',
         lazy = true,
-        dependencies = {
-            'sindrets/diffview.nvim',
+        opts = {
+            integrations = { diffview = true },
         },
         cmd = 'Neogit',
         keys = {
