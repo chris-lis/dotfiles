@@ -3,6 +3,10 @@ return {
     'mikavilpas/yazi.nvim',
     version = '*',
     event = 'VeryLazy',
+    -- Upstream's `yazi-plugin/yazi-plugins` submodule is test-only, and lazy's
+    -- default --recurse-submodules fails on it, leaving the checkout dirty and
+    -- blocking all further updates.
+    submodules = false,
     dependencies = {
         { 'nvim-lua/plenary.nvim', lazy = true }
     },

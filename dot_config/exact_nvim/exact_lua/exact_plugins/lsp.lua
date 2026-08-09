@@ -110,7 +110,12 @@ return {
                             { buffer = bufnr, desc = 'LSP: Run code [l]ens' })
                     end
 
-                    if client:supports_method('textDocument/foldingRange') then
+                    -- Fold options are window-local, so guard on the buffer being
+                    -- displayed: LspAttach also fires for background buffers and
+                    -- would otherwise set folding on an unrelated window.
+                    -- Deliberately overrides treesitter folding where available.
+                    if client:supports_method('textDocument/foldingRange')
+                        and vim.api.nvim_win_get_buf(0) == bufnr then
                         vim.wo.foldmethod = 'expr'
                         vim.wo.foldexpr = 'v:lua.vim.lsp.foldexpr()'
                         vim.wo.foldlevel = 99
@@ -151,7 +156,7 @@ return {
     },
     {
         'mrcjkb/rustaceanvim',
-        version = '^6',
+        version = '^9',
         lazy = false,
     }
 }
