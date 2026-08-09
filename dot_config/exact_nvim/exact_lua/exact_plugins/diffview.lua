@@ -56,6 +56,12 @@ return {
     },
     opts = {
         enhanced_diff_hl = true,
+        keymaps = {
+            -- `q` is only bound in the option panel and help menu by default.
+            view = { { 'n', 'q', '<cmd>DiffviewClose<cr>', { desc = 'Close diffview' } } },
+            file_panel = { { 'n', 'q', '<cmd>DiffviewClose<cr>', { desc = 'Close diffview' } } },
+            file_history_panel = { { 'n', 'q', '<cmd>DiffviewClose<cr>', { desc = 'Close diffview' } } },
+        },
         view = {
             merge_tool = {
                 layout = 'diff3_mixed',
