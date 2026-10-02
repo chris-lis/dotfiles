@@ -180,6 +180,11 @@ if top=$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" rev-parse --show-toplevel 2>/dev/nul
   sub="${cwd#$top}"
   if [ -n "$sub" ]; then
     DIR_VARIANTS+=("${repo_label}${sub}"); DIRC_VARIANTS+=("${repo_labelc}${sub}")
+    # Deeper than one level: also "repo/…/last", so the current directory's
+    # own name survives a squeeze longer than the path above it.
+    if [ "${sub#/*/}" != "$sub" ]; then
+      DIR_VARIANTS+=("${repo_label}/…/${sub##*/}"); DIRC_VARIANTS+=("${repo_labelc}/…/${sub##*/}")
+    fi
   fi
   DIR_VARIANTS+=("$repo_label"); DIRC_VARIANTS+=("$repo_labelc")
 fi
@@ -607,7 +612,8 @@ fi
 # ── Print ────────────────────────────────────────────────────────────────────
 # Width is measured in characters, but Nerd Font glyphs may render as 2 cells
 # in some terminals. SL_MARGIN keeps a few columns spare so the line can never
-# wrap; raise it if you ever see wrapping, lower it for a tighter flush-right.
+# wrap. 4, not less: at 2 Claude Code truncated the line with an ellipsis, so
+# its own row is narrower than COLUMNS by a little.
 SL_MARGIN=${SL_MARGIN:-4}
 # _try: print the current composition if it fits on one line, and exit.
 _try() {
@@ -624,16 +630,22 @@ if [ -n "$R_P" ] && [ -n "$cols" ] && [ "$cols" -gt 0 ] 2>/dev/null; then
     _compose "$d" 0 0 1 1 "$br_text"; _try
   done
   (( last_dir == 0 )) && { _compose 0 0 0 1 1 "$br_text"; _try; }
-  # COMPACT: repo name, tokens only, 5h timer only. Deliberately no
-  # intermediate steps: a compact line should look the same from one refresh
-  # to the next rather than flicker items in and out as the numbers change.
-  # The branch is shortened longest-first so the full name shows when it fits.
-  for cand in "${BR_VARIANTS[@]:-}"; do
-    _compose "$last_dir" 0 1 0 1 "$cand"; _try
-  done
+  # COMPACT: tokens only, 5h timer only; the right group has no further
+  # intermediate steps, so a compact line looks the same from one refresh to
+  # the next rather than flickering items in and out as the numbers change.
+  # The subdirectory is folded late: for each directory form, longest first
+  # (repo/sub/dir, repo/…/dir, repo), the branch is shortened longest-first,
+  # then the model drops to its initial, and only then does the directory
+  # give up a level.
   shortest="${BR_VARIANTS[$(( ${#BR_VARIANTS[@]} - 1 ))]:-}"
-  # Tighter still: model initial only, then the 5h timer goes too.
-  _compose "$last_dir" 1 1 0 1 "$shortest"; _try
+  first_compact=1; (( last_dir == 0 )) && first_compact=0
+  for (( d=first_compact; d<=last_dir; d++ )); do
+    for cand in "${BR_VARIANTS[@]:-}"; do
+      _compose "$d" 0 1 0 1 "$cand"; _try
+    done
+    _compose "$d" 1 1 0 1 "$shortest"; _try
+  done
+  # Tighter still: the 5h timer goes too.
   _compose "$last_dir" 1 1 0 0 "$shortest"; _try
   # Nothing fit whole: middle-truncate the shortest variant to the space left.
   if [ ${#BR_VARIANTS[@]} -gt 0 ]; then
