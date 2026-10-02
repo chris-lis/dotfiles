@@ -22,4 +22,6 @@ Library
 .claude/*
 !.claude/settings.json
 !.claude/statusline-command.sh
+!.claude/subagent-statusline.sh
+!.claude/keybindings.json
 .config/nvim/.claude

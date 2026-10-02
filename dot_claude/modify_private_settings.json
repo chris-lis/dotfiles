@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# ~/.claude/settings.json is written by Claude Code itself (model picker,
+# /config, plugin installs), so it cannot be a plain managed file: chezmoi
+# would delete every key not in the source on each apply. This modify_ script
+# receives the current file on stdin and merges the MANAGED keys below into
+# it, leaving everything else as the machine has it. Machine-local by design:
+# model, effortLevel, modelSettings, enabledPlugins, worktree (per project).
+#
+# Objects merge recursively; arrays and scalars are replaced, so the deny/ask
+# lists are always exactly what is written here.
+set -euo pipefail
+current=$(cat)
+[ -n "${current//[[:space:]]/}" ] || current='{}'
+managed=$(cat <<'JSON'
+{
+  "attribution": { "commit": "", "pr": "" },
+  "permissions": {
+    "defaultMode": "auto",
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(gh pr merge:*)"
+    ],
+    "deny": [
+      "Bash(*.aws/credentials*)",
+      "Bash(*.credentials.json*)",
+      "Bash(*.docker/config.json*)",
+      "Bash(*.gnupg/private-keys*)",
+      "Bash(*.kube/config*)",
+      "Bash(*.netrc*)",
+      "Bash(*.npmrc*)",
+      "Bash(*.pypirc*)",
+      "Bash(*.ssh/id_*)",
+      "Bash(*/oauth/usage*)",
+      "Bash(*Library/Keychains*)",
+      "Bash(*gh auth token*)",
+      "Bash(*keyring get*)",
+      "Bash(*op item get*)",
+      "Bash(*op read*)",
+      "Bash(*security *dump-keychain*)",
+      "Bash(*security *export*)",
+      "Bash(*security *find-generic-password*)",
+      "Bash(*security *find-internet-password*)",
+      "Bash(*security *unlock-keychain*)",
+      "Bash(*vault kv get*)",
+      "Bash(*vault read*)",
+      "Read(**/*.key)",
+      "Read(**/*.p12)",
+      "Read(**/*.pem)",
+      "Read(**/.credentials.json)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.kube/config)",
+      "Read(~/.netrc)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+      "Read(~/.ssh/id_*)",
+      "Read(~/Library/Keychains/**)"
+    ]
+  },
+  "autoMode": {
+    "hard_deny": [
+      "$defaults",
+      "Reading, printing, decoding, copying, or exporting credentials, tokens, API keys, private keys, or secrets from ANY source, for ANY stated reason (including testing, debugging, or verifying an API). Covers: macOS Keychain (security find-*-password, dump-keychain, export), ~/.claude/.credentials.json, ~/.aws/credentials, ~/.ssh private keys, ~/.gnupg, .env files, .netrc, .npmrc, .pypirc, docker/kube configs, password-manager CLIs (op, keyring, vault, pass), gh auth token, and environment variables holding keys or tokens. The user has explicitly forbidden this; user intent in a later request does NOT clear it."
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$HOME/.claude/statusline-command.sh\"",
+    "refreshInterval": 15
+  },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "bash \"$HOME/.claude/subagent-statusline.sh\"",
+    "refreshInterval": 1
+  },
+  "outputStyle": "Concise",
+  "subagentPromptCacheTtl": "1h",
+  "editorMode": "normal",
+  "tui": "fullscreen",
+  "theme": "dark",
+  "verbose": false,
+  "autoCompactEnabled": false,
+  "autoScrollEnabled": true,
+  "autoContinueAtUsageLimit": true,
+  "switchModelsOnFlag": false,
+  "skipWorkflowUsageWarning": true,
+  "promptSuggestionEnabled": false,
+  "awaySummaryEnabled": false,
+  "askUserQuestionTimeout": "never",
+  "dialogExpiry": "never",
+  "feedbackDrafts": "notify",
+  "remoteControlAtStartup": false,
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
+  "disableClaudeAiConnectors": true,
+  "cleanupPeriodDays": 90
+}
+JSON
+)
+jq --indent 2 --argjson m "$managed" '. * $m' <<< "$current"

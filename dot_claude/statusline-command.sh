@@ -2,8 +2,20 @@
 # Claude Code status line
 #
 # Layout: left group (host · dir · git) and right group (model · effort ·
-# context · 5h/7d usage), right-aligned using the COLUMNS the harness exports;
-# falls back to a two-line layout when width is unknown or the groups collide.
+# context · 5h/7d usage), right-aligned using the COLUMNS the harness exports.
+# Two layouts: WIDE (full path, "312k/1M", both reset timers) when it fits,
+# otherwise COMPACT (repo name, tokens only, 5h timer only). Compact is then
+# squeezed step by step if it still collides (shorter branch, model initial,
+# drop the 5h timer) and the first variant that fits is printed. Only when
+# nothing fits does it fall back to two lines (right group right-aligned on its
+# own line), or flush-left when the width is unknown. Thresholds are therefore
+# content-driven, not fixed column counts, so font/pane changes need no tuning.
+#
+# Claude Code re-runs this script only on events (new assistant message,
+# /compact, mode changes, a rate-limit window reaching resets_at) plus the
+# statusLine.refreshInterval timer set in settings.json. The context and usage
+# figures are whatever the LAST API response reported, so they cannot be
+# fresher than the most recent message in the session.
 #
 # Git status comes from p10k's gitstatusd binary for exact z4h parity.
 # Diagnostics: set STATUSLINE_DEBUG=1 to dump the input JSON + probe results.
@@ -32,6 +44,9 @@ C_REMOTE=$'\033[38;5;208m'
 C_YELLOW=$'\033[38;5;178m'
 C_ORANGE=$'\033[38;5;208m'
 C_RED=$'\033[38;5;196m'
+# Prompt-cache snowflake ramp: blues, so it stands apart from the usage ramp
+C_ICE_LIGHT=$'\033[38;5;117m'
+C_ICE_DARK=$'\033[38;5;27m'
 # p10k VCS palette
 G_CLEAN=$'\033[38;5;76m'
 G_MOD=$'\033[38;5;178m'
@@ -43,11 +58,20 @@ G_META=$'\033[38;5;244m'
 # (BMP private-use characters are easily stripped by text tooling).
 GL_APPLE=$'\xef\x85\xb9'   # U+F179 apple
 GL_CLOUD=$'\xef\x83\x82'   # U+F0C2 cloud
-GL_FOLDER=$'\xef\x81\xbb'  # U+F07B folder
-GL_MODEL=$'\xf3\xb1\x99\xba'  # U+F167A robot
+GL_COLD=$'\xf3\xb0\x9c\x97'   # U+F0717 snowflake: prompt cache expiring / cold
+# Worktree glyph. Alternatives the user liked, to swap in later:
+#   $'\xf3\xb0\x91\x84'  U+F0444 md-ray_start_end (dot at each end)
+#   $'\xf3\xb0\x91\x85'  U+F0445 md-ray_vertex (dot in the middle)
+# Needs JetBrainsMono Nerd Font 3.x (Homebrew cask). U+2387 is absent from it
+# and renders from a proportional fallback font, overlapping the next cell.
+GL_WT=$'\xf3\xb0\x9c\x9b'   # U+F071B md-source_commit_local
+SL_CACHE_WARN=${SL_CACHE_WARN:-900}     # seconds before expiry: grey snowflake
+SL_CACHE_URGENT=${SL_CACHE_URGENT:-300} # seconds before expiry: light blue
+SL_CACHE_FINAL=${SL_CACHE_FINAL:-60}    # seconds before expiry: dark blue
 
-SEP_V="  ${C_SEP}│${RST}  "
-SEP_P="  │  "
+# Separator: dim middot, one space each side.
+SEP_V=" ${C_SEP}·${RST} "
+SEP_P=" · "
 
 # ── Parse input (single jq call) ─────────────────────────────────────────────
 # Fields are joined with 0x1f: a non-whitespace IFS keeps empty fields, which
@@ -65,7 +89,10 @@ $(printf '%s' "$input" | jq -j '
     (.rate_limits.five_hour.resets_at // "" | tostring),
     (.rate_limits.seven_day.used_percentage // "" | tostring),
     (.rate_limits.seven_day.resets_at // "" | tostring),
-    (.remote.session_id // "")
+    (.remote.session_id // ""),
+    (.session_id // ""),
+    (if .prompt_cache.caching_observed == true then (if .prompt_cache.warm == false then "cold" else "warm" end) else "" end),
+    (.prompt_cache.expires_at // "" | tostring)
   ] | join("\u001f")')
 EOF
 cwd="${F[0]}"      model_name="${F[1]}"
@@ -73,7 +100,8 @@ ctx_pct="${F[2]}"  ctx_in="${F[3]}"    ctx_size="${F[4]}"
 fast="${F[5]}"     effort="${F[6]}"
 fh_pct="${F[7]}"   fh_reset="${F[8]}"
 sd_pct="${F[9]}"   sd_reset="${F[10]}"
-remote_id="${F[11]}"
+remote_id="${F[11]}" session_id="${F[12]}"
+cache_state="${F[13]}" cache_exp="${F[14]}"
 [ -z "$cwd" ] && cwd="$(pwd)"
 
 # ── Threshold ramp ───────────────────────────────────────────────────────────
@@ -126,6 +154,34 @@ if (( n > 3 )); then
   for (( i=1; i<n-2; i++ )); do result+="/${parts[$i]:0:1}"; done
   result+="/${parts[$((n-2))]}/${parts[$((n-1))]}"
   short_dir="$result"
+fi
+
+# ── Directory variants, longest first ────────────────────────────────────────
+# Inside a git repo the path can collapse to "repo/sub/dir" and then to "repo".
+# In a linked worktree the repo name is the MAIN worktree's directory and the
+# worktree's own directory is appended as "repo<GL_WT>wt" (worktree in white), since
+# the checkout name alone would misidentify the project. When the worktree is
+# named after its branch the git segment drops the branch text (see _compose),
+# so the name is not shown twice. Outside a repo only the path is offered.
+# DIRC_VARIANTS holds the coloured form of each entry.
+DIR_VARIANTS=("$short_dir"); DIRC_VARIANTS=("$short_dir")
+wt=""
+if top=$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) && [ -n "$top" ]; then
+  common=$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+  repo="${top##*/}"
+  if [ -n "$common" ] && [ "${common##*/}" = ".git" ]; then
+    main_top="${common%/.git}"
+    if [ "$main_top" != "$top" ]; then
+      wt="${top##*/}"; repo="${main_top##*/}"
+    fi
+  fi
+  repo_label="$repo${wt:+$GL_WT$wt}"
+  repo_labelc="$repo${wt:+${G_META}$GL_WT${C_WHITE}${BLD}$wt${C_DIR}}"
+  sub="${cwd#$top}"
+  if [ -n "$sub" ]; then
+    DIR_VARIANTS+=("${repo_label}${sub}"); DIRC_VARIANTS+=("${repo_labelc}${sub}")
+  fi
+  DIR_VARIANTS+=("$repo_label"); DIRC_VARIANTS+=("$repo_labelc")
 fi
 
 # ── Git status via gitstatusd (p10k parity) ──────────────────────────────────
@@ -231,17 +287,24 @@ _git_seg() {
     commit) GS_V="${G_META}@${G_CLEAN}${1}"; GS_P="@${1}" ;;
     *)      GS_V="${G_CLEAN}${1}";          GS_P="${1}"   ;;
   esac
-  GS_V+="${marks_v}"; GS_P+="${marks_p}"
+  if [ -z "$1" ]; then
+    # Branch text suppressed (shown in the directory segment): marks only.
+    GS_V="${G_CLEAN}${marks_v# }"; GS_P="${marks_p# }"
+  else
+    GS_V+="${marks_v}"; GS_P+="${marks_p}"
+  fi
 }
 
 # ── Model + effort + fast mode ───────────────────────────────────────────────
 # "Opus 5 (1M context)" → "Opus5"; the window size is shown by the context
-# segment, so it is not repeated here.
+# segment, so it is not repeated here. mdl_init is the one-letter form used
+# when space is tight (F/O/S/H).
 if [[ "$model_name" =~ ^([A-Za-z]+)[[:space:]]+([0-9]+(\.[0-9]+)?) ]]; then
   mdl_short="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
 else
   mdl_short="$model_name"
 fi
+mdl_init="${mdl_short:0:1}"
 
 eff=""
 case "$effort" in
@@ -253,13 +316,61 @@ case "$effort" in
 esac
 if [ -n "$fast" ]; then eff="${eff:+$eff }⚡"; fi
 
-mdl_v="" mdl_p=""
-if [ -n "$mdl_short" ]; then
-  mdl_v="${C_MDL}${GL_MODEL} ${mdl_short}${RST}"
-  mdl_p="${GL_MODEL} ${mdl_short}"
+# _model_seg <initial only 1|0> → sets MDL_V / MDL_P
+_model_seg() {
+  MDL_V="" MDL_P=""
+  [ -z "$mdl_short" ] && return
+  local m="$mdl_short"; [ "$1" = "1" ] && m="$mdl_init"
+  MDL_V="${C_MDL}${m}${RST}"
+  MDL_P="${m}"
   if [ -n "$eff" ]; then
-    mdl_v+=" ${C_MUTE}${eff}${RST}"; mdl_p+=" ${eff}"
+    MDL_V+=" ${C_MUTE}${eff}${RST}"; MDL_P+=" ${eff}"
   fi
+}
+
+# ── Clock ────────────────────────────────────────────────────────────────────
+# resets_at may be epoch seconds or an ISO-8601 timestamp.
+read now tzoff_raw <<EOF
+$(date '+%s %z')
+EOF
+# "+0200" / "-0600" → seconds east of UTC, needed to place local day boundaries
+tz_h="${tzoff_raw:1:2}"; tz_m="${tzoff_raw:3:2}"
+tzoff=$(( 10#$tz_h * 3600 + 10#$tz_m * 60 ))
+[ "${tzoff_raw:0:1}" = "-" ] && tzoff=$(( -tzoff ))
+
+# ── Cross-session rate-limit sync ────────────────────────────────────────────
+# rate_limits reflects the headers of THIS session's last API response, so an
+# idle session keeps showing stale usage while another session burns through
+# the budget. Each session mirrors the values it receives into a per-session
+# file. Usage within a window only ever rises, and all sessions on the account
+# share the same window, so the freshest figure is simply the HIGHEST one among
+# records for the current window (write time is not a usable signal: an idle
+# session's first run would stamp its stale value as new). Records whose reset
+# time has passed are ignored, matching Claude Code, which drops them from the
+# payload. Set SL_SYNC_DIR=off to disable.
+SL_SYNC_DIR="${SL_SYNC_DIR:-$HOME/.cache/claude-statusline}"
+if [ "$SL_SYNC_DIR" != "off" ] && [ -n "$session_id" ] && mkdir -p "$SL_SYNC_DIR" 2>/dev/null; then
+  own="$SL_SYNC_DIR/sess-${session_id//[^A-Za-z0-9_-]/}.json"
+  if [ -n "$fh_pct$sd_pct" ]; then
+    cur="$fh_pct|$fh_reset|$sd_pct|$sd_reset"
+    prev=$(jq -r '[.fh_pct,.fh_reset,.sd_pct,.sd_reset]|join("|")' "$own" 2>/dev/null)
+    if [ "$cur" != "$prev" ]; then
+      printf '{"fh_pct":"%s","fh_reset":"%s","sd_pct":"%s","sd_reset":"%s","seen_at":%d}\n' \
+        "$fh_pct" "$fh_reset" "$sd_pct" "$sd_reset" "$now" > "$own.tmp" && mv -f "$own.tmp" "$own"
+    fi
+  fi
+  # Forget sessions that have not reported for two days
+  find "$SL_SYNC_DIR" -name 'sess-*.json' -mmin +2880 -delete 2>/dev/null
+  IFS=$'\037' read -r -a RL <<EOF
+$(jq -j -s --argjson now "$now" '
+    def best(p; r): [ .[] | select((.[p] // "") != "" and ((.[r] | tonumber?) // 0) > $now) ]
+                    | max_by([ (.[r] | tonumber), ((.[p] | tonumber?) // 0) ]) // {};
+    [ (best("fh_pct"; "fh_reset") | (.fh_pct // ""), (.fh_reset // "")),
+      (best("sd_pct"; "sd_reset") | (.sd_pct // ""), (.sd_reset // "")) ] | join("\u001f")' \
+    "$SL_SYNC_DIR"/sess-*.json 2>/dev/null)
+EOF
+  [ -n "${RL[0]:-}" ] && { fh_pct="${RL[0]}"; fh_reset="${RL[1]}"; }
+  [ -n "${RL[2]:-}" ] && { sd_pct="${RL[2]}"; sd_reset="${RL[3]}"; }
 fi
 
 # ── Context: absolute tokens / window, colored by % of window ────────────────
@@ -274,40 +385,62 @@ _fmt_tok() {
   else printf '%d' "$t"; fi
 }
 
-ctx_v="" ctx_p=""
+# Two forms are prepared: "312k/1M" and the compact "312k" (the colour alone
+# says how full the window is, whatever its size).
+ctx_v="" ctx_p="" ctx_short_v="" ctx_short_p=""
 if [ -n "$ctx_pct" ]; then
   cpct=$(printf "%.0f" "$ctx_pct")
-  _ramp "$(_pct10 "$ctx_pct")" 20 50 80
   if [ -n "$ctx_in" ] && [ -n "$ctx_size" ] && [ "$ctx_size" != "0" ]; then
+    # Colour from the SAME figure that is displayed. The payload's
+    # used_percentage is derived from a broader usage number than
+    # total_input_tokens, so it crosses 20% while the shown count is still
+    # below 200k; the 200k boundary is about input tokens, so use those.
+    _ramp $(( ctx_in * 1000 / ctx_size )) 20 50 80
     ctx_used="$(_fmt_tok "$ctx_in")"; ctx_tot="$(_fmt_tok "$ctx_size")"
     # Only the tokens actually used carry the ramp colour; the window size is
     # a fixed reference value, so it stays muted.
     ctx_v="${RAMP}${ctx_used}${C_MUTE}/${ctx_tot}${RST}"
     ctx_p="${ctx_used}/${ctx_tot}"
+    ctx_short_v="${RAMP}${ctx_used}${RST}"
+    ctx_short_p="${ctx_used}"
   else
+    _ramp "$(_pct10 "$ctx_pct")" 20 50 80
     ctx_p="${cpct}%"
     ctx_v="${RAMP}${ctx_p}${RST}"
+    ctx_short_v="$ctx_v"; ctx_short_p="$ctx_p"
+  fi
+  # Prompt-cache snowflake. A cold cache means the next request re-writes the
+  # whole prefix (cache-write rate, counted against usage). The glyph appears
+  # 15 minutes before expiry and deepens in colour as it approaches — grey,
+  # light blue, dark blue — then turns white once the cache is cold. Blues are
+  # used so it reads at a glance among the yellow/orange usage ramp. Claude
+  # Code re-runs this script at expires_at and every refreshInterval seconds.
+  ice=""
+  if [ "$cache_state" = "cold" ]; then
+    ice="$C_WHITE"
+  elif [ "$cache_state" = "warm" ] && [ -n "$cache_exp" ]; then
+    rem=$(( cache_exp - now ))
+    if   (( rem <= SL_CACHE_FINAL ));  then ice="$C_ICE_DARK"
+    elif (( rem <= SL_CACHE_URGENT )); then ice="$C_ICE_LIGHT"
+    elif (( rem <= SL_CACHE_WARN ));   then ice="$C_MUTE"
+    fi
+  fi
+  if [ -n "$ice" ]; then
+    ctx_v+=" ${ice}${GL_COLD}${RST}"; ctx_p+=" ${GL_COLD}"
+    ctx_short_v+=" ${ice}${GL_COLD}${RST}"; ctx_short_p+=" ${GL_COLD}"
   fi
 fi
 
 # ── Rate-limit windows ───────────────────────────────────────────────────────
-# resets_at may be epoch seconds or an ISO-8601 timestamp.
-read now tzoff_raw <<EOF
-$(date '+%s %z')
-EOF
-# "+0200" / "-0600" → seconds east of UTC, needed to place local day boundaries
-tz_h="${tzoff_raw:1:2}"; tz_m="${tzoff_raw:3:2}"
-tzoff=$(( 10#$tz_h * 3600 + 10#$tz_m * 60 ))
-[ "${tzoff_raw:0:1}" = "-" ] && tzoff=$(( -tzoff ))
-
 # ── Work-week model ──────────────────────────────────────────────────────────
 # Pace is measured against AVAILABLE time, not calendar time. On a team or
 # enterprise account weekends do not count (and any 7-day span contains exactly
 # five weekdays' worth of seconds, so the denominator needs no alignment
 # special-casing); on a personal account every day counts. SL_WORK_DAYS
 # overrides the detection: digits are weekdays, 0=Sunday .. 6=Saturday.
+org_type=$(jq -r '.oauthAccount.organizationType // ""' "$HOME/.claude.json" 2>/dev/null)
 if [ -z "${SL_WORK_DAYS:-}" ]; then
-  case "$(jq -r '.oauthAccount.organizationType // ""' "$HOME/.claude.json" 2>/dev/null)" in
+  case "$org_type" in
     *team*|*enterprise*) SL_WORK_DAYS="12345"   ;;
     *)                   SL_WORK_DAYS="0123456" ;;
   esac
@@ -378,9 +511,12 @@ _usage_seg() {  # $1=label $2=pct $3=resets_at $4=window secs $5=weight → U_V/
       el=$(( now - start )); tot=$win
     fi
     (( el > tot )) && el=$tot
-    # Below 5% of the available time elapsed, or under 3% used, the projection
-    # is dominated by noise (1% in the first minute projects to 300%).
-    if (( el > 0 && tot > 0 && el * 100 / tot >= 5 && p10 >= 30 )); then
+    # Early in a window the projection is dominated by noise (1% used in the
+    # first minute projects to 300%), so elapsed time is floored at 15% of the
+    # window. The colour then fades in smoothly instead of snapping to red at a
+    # fixed cutoff; under 3% used nothing is coloured at all.
+    el_min=$(( tot * 15 / 100 )); (( el < el_min )) && el=$el_min
+    if (( el > 0 && tot > 0 && p10 >= 30 )); then
       pace100=$(( p10 * tot / (10 * el) ))
       if   (( pace100 >= 125 )); then RAMP="$C_RED"
       elif (( pace100 >= 100 )); then RAMP="$C_ORANGE"
@@ -390,37 +526,62 @@ _usage_seg() {  # $1=label $2=pct $3=resets_at $4=window secs $5=weight → U_V/
   fi
   U_V="${C_MUTE}${1}${RST} ${RAMP}${p}%${RST}"
   U_P="${1} ${p}%"
+  # The countdown is kept separate so the ladder can drop it.
+  U_CD_V="" U_CD_P=""
   if [ -n "$ep" ]; then
     cd=$(_countdown $(( ep - now )))
-    U_V+=" ${C_MUTE}↻${cd}${RST}"; U_P+=" ↻${cd}"
+    U_CD_V=" ${C_MUTE}↻${cd}${RST}"; U_CD_P=" ↻${cd}"
   fi
 }
 
-_usage_seg "5h" "$fh_pct" "$fh_reset" "$WIN_5H" 0; fh_v="$U_V" fh_p="$U_P"
-_usage_seg "7d" "$sd_pct" "$sd_reset" "$WIN_7D" 1; sd_v="$U_V" sd_p="$U_P"
+_usage_seg "5h" "$fh_pct" "$fh_reset" "$WIN_5H" 0
+fh_v="$U_V$U_CD_V" fh_p="$U_P$U_CD_P"
+fh_short_v="$U_V" fh_short_p="$U_P"
+# The 7d window resets at the same moment every week, so its timer is the
+# first thing to go when space is short; the 5h one is far less predictable.
+_usage_seg "7d" "$sd_pct" "$sd_reset" "$WIN_7D" 1
+sd_v="$U_V$U_CD_V" sd_p="$U_P$U_CD_P"
+sd_short_v="$U_V" sd_short_p="$U_P"
 
 # ── Assemble groups ──────────────────────────────────────────────────────────
-# _compose_left <branch text> → sets L_V (with colour) / L_P (plain, for width)
+# _compose_left <dir idx> <branch text> → L_V (with colour) / L_P (plain)
 _compose_left() {
+  local bt="$2"
+  # Worktree named after its branch: the directory segment already shows it.
+  if (( $1 > 0 )) && [ -n "$wt" ] && [ "$br_kind" = "branch" ] && [ "$br_text" = "$wt" ]; then bt=""; fi
   L_V="${host_col}${host_glyph}${host_label:+ $host_label}${RST}"
   L_P="${host_glyph}${host_label:+ $host_label}"
-  L_V+="${SEP_V}${C_DIR}${BLD}${GL_FOLDER} ${short_dir}${RST}"
-  L_P+="${SEP_P}${GL_FOLDER} ${short_dir}"
+  L_V+="${SEP_V}${C_DIR}${BLD}${DIRC_VARIANTS[$1]}${RST}"
+  L_P+="${SEP_P}${DIR_VARIANTS[$1]}"
+  # Directory and git status sit side by side with a plain space, as in p10k.
   if [ -n "$br_text" ]; then
-    _git_seg "$1"
-    L_V+="${SEP_V}${GS_V}"; L_P+="${SEP_P}${GS_P}"
+    _git_seg "$bt"
+    if [ -n "$GS_P" ]; then L_V+=" ${GS_V}"; L_P+=" ${GS_P}"; fi
   fi
 }
-_compose_left "$br_text"
 
-R_V="" R_P=""
+# _compose_right <model initial 1|0> <ctx short 1|0> <7d timer 1|0> <5h timer 1|0>
 _radd() { [ -z "$2" ] && return
   if [ -n "$R_P" ]; then R_V+="${SEP_V}"; R_P+="${SEP_P}"; fi
   R_V+="$1"; R_P+="$2"; }
-_radd "$mdl_v" "$mdl_p"
-_radd "$ctx_v" "$ctx_p"
-_radd "$fh_v"  "$fh_p"
-_radd "$sd_v"  "$sd_p"
+_compose_right() {
+  R_V="" R_P=""
+  _model_seg "$1"
+  _radd "$MDL_V" "$MDL_P"
+  if [ "$2" = "1" ]; then _radd "$ctx_short_v" "$ctx_short_p"
+  else                    _radd "$ctx_v" "$ctx_p"; fi
+  if [ "$4" = "1" ]; then _radd "$fh_v" "$fh_p"
+  else                    _radd "$fh_short_v" "$fh_short_p"; fi
+  if [ "$3" = "1" ]; then _radd "$sd_v" "$sd_p"
+  else                    _radd "$sd_short_v" "$sd_short_p"; fi
+}
+
+# _compose <dir idx> <model initial> <ctx short> <7d timer> <5h timer> <branch>
+_compose() {
+  _compose_left "$1" "$6"
+  _compose_right "$2" "$3" "$4" "$5"
+}
+_compose 0 0 0 1 1 "$br_text"
 
 # ── Terminal width ───────────────────────────────────────────────────────────
 # Claude Code exports COLUMNS with the real terminal width; /dev/tty is NOT
@@ -448,40 +609,58 @@ fi
 # in some terminals. SL_MARGIN keeps a few columns spare so the line can never
 # wrap; raise it if you ever see wrapping, lower it for a tighter flush-right.
 SL_MARGIN=${SL_MARGIN:-4}
+# _try: print the current composition if it fits on one line, and exit.
+_try() {
+  local gap=$(( cols - SL_MARGIN - ${#L_P} - ${#R_P} ))
+  if (( gap >= 3 )); then
+    printf '%s%s%s\n' "$L_V" "$(printf "%${gap}s" "")" "$R_V"
+    exit 0
+  fi
+}
 if [ -n "$R_P" ] && [ -n "$cols" ] && [ "$cols" -gt 0 ] 2>/dev/null; then
-  # Try each branch variant longest-first and take the first that fits on one
-  # line, so the full branch name is shown whenever there is room for it.
-  for cand in "${BR_VARIANTS[@]:-}"; do
-    _compose_left "$cand"
-    gap=$(( cols - SL_MARGIN - ${#L_P} - ${#R_P} ))
-    if (( gap >= 3 )); then
-      printf '%s%s%s\n' "$L_V" "$(printf "%${gap}s" "")" "$R_V"
-      exit 0
-    fi
+  last_dir=$(( ${#DIR_VARIANTS[@]} - 1 ))
+  # WIDE: full right group with the full path, then with repo/subdir if any.
+  for (( d=0; d<last_dir; d++ )); do
+    _compose "$d" 0 0 1 1 "$br_text"; _try
   done
+  (( last_dir == 0 )) && { _compose 0 0 0 1 1 "$br_text"; _try; }
+  # COMPACT: repo name, tokens only, 5h timer only. Deliberately no
+  # intermediate steps: a compact line should look the same from one refresh
+  # to the next rather than flicker items in and out as the numbers change.
+  # The branch is shortened longest-first so the full name shows when it fits.
+  for cand in "${BR_VARIANTS[@]:-}"; do
+    _compose "$last_dir" 0 1 0 1 "$cand"; _try
+  done
+  shortest="${BR_VARIANTS[$(( ${#BR_VARIANTS[@]} - 1 ))]:-}"
+  # Tighter still: model initial only, then the 5h timer goes too.
+  _compose "$last_dir" 1 1 0 1 "$shortest"; _try
+  _compose "$last_dir" 1 1 0 0 "$shortest"; _try
   # Nothing fit whole: middle-truncate the shortest variant to the space left.
   if [ ${#BR_VARIANTS[@]} -gt 0 ]; then
-    shortest="${BR_VARIANTS[$(( ${#BR_VARIANTS[@]} - 1 ))]}"
-    _compose_left ""
+    _compose "$last_dir" 1 1 0 0 ""
     # Below SL_MIN_BRANCH a truncated name carries less information than
     # simply moving to two lines and showing it in full, so prefer that.
     room=$(( cols - SL_MARGIN - 3 - ${#L_P} - ${#R_P} ))
     if (( room >= ${SL_MIN_BRANCH:-16} )); then
       keep=$(( room - 1 ))
       head=$(( keep / 2 )); tail=$(( keep - head ))
-      _compose_left "${shortest:0:$head}…${shortest: -$tail}"
-      gap=$(( cols - SL_MARGIN - ${#L_P} - ${#R_P} ))
-      if (( gap >= 3 )); then
-        printf '%s%s%s\n' "$L_V" "$(printf "%${gap}s" "")" "$R_V"
-        exit 0
-      fi
+      _compose "$last_dir" 1 1 0 0 "${shortest:0:$head}…${shortest: -$tail}"
+      _try
     fi
   fi
 fi
-# Fallback / narrow terminal: two lines, with the full branch name
-_compose_left "$br_text"
+# Fallback / narrow terminal: two lines. The left line keeps the full branch
+# name but uses the repo-name directory; the right group keeps its compact
+# form and is right-aligned on its own line when the width is known; set
+# SL_LINE2_ALIGN=left to keep both lines flush-left.
+_compose $(( ${#DIR_VARIANTS[@]} - 1 )) 0 1 0 1 "$br_text"
 if [ -n "$R_P" ]; then
-  printf '%s\n%s\n' "$L_V" "$R_V"
+  pad=""
+  if [ "${SL_LINE2_ALIGN:-right}" = "right" ] && [ -n "$cols" ] && [ "$cols" -gt 0 ] 2>/dev/null; then
+    gap=$(( cols - SL_MARGIN - ${#R_P} ))
+    (( gap > 0 )) && pad="$(printf "%${gap}s" "")"
+  fi
+  printf '%s\n%s%s\n' "$L_V" "$pad" "$R_V"
 else
   printf '%s\n' "$L_V"
 fi
