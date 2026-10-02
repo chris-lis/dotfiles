@@ -6,8 +6,16 @@
 # it, leaving everything else as the machine has it. Machine-local by design:
 # model, effortLevel, modelSettings, enabledPlugins, worktree (per project).
 #
-# Objects merge recursively; arrays and scalars are replaced, so the deny/ask
-# lists are always exactly what is written here.
+# Merge rules:
+# - objects merge key by key, recursively;
+# - scalars from MANAGED replace the machine's value on every apply;
+# - lists are ADDITIVE: managed entries are appended when missing and the
+#   machine's own entries are kept, so a work- or personal-only permission rule
+#   added locally survives;
+# - RETIRED (below) is how something leaves the sync: a key set to null there
+#   is deleted, and list entries named there are removed. Without it, a key or
+#   entry dropped from MANAGED would simply stay on every machine as a local
+#   one. Entries can be pruned from RETIRED once every machine has applied.
 set -euo pipefail
 current=$(cat)
 [ -n "${current//[[:space:]]/}" ] || current='{}'
@@ -102,4 +110,22 @@ managed=$(cat <<'JSON'
 }
 JSON
 )
-jq --indent 2 --argjson m "$managed" '. * $m' <<< "$current"
+retired=$(cat <<'JSON'
+{}
+JSON
+)
+jq --indent 2 --argjson m "$managed" --argjson r "$retired" '
+  def retire($a; $r):
+    if ($a|type) == "object" and ($r|type) == "object" then
+      reduce ($r|keys_unsorted[]) as $k ($a;
+        if $r[$k] == null then del(.[$k])
+        elif has($k) then .[$k] = retire($a[$k]; $r[$k])
+        else . end)
+    elif ($a|type) == "array" and ($r|type) == "array" then $a - $r
+    else $a end;
+  def merge($a; $b):
+    if ($a|type) == "object" and ($b|type) == "object" then
+      reduce ($b|keys_unsorted[]) as $k ($a; .[$k] = merge($a[$k]; $b[$k]))
+    elif ($a|type) == "array" and ($b|type) == "array" then $a + ($b - $a)
+    else $b end;
+  merge(retire(.; $r); $m)' <<< "$current"
