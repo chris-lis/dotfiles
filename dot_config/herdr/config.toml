@@ -1,0 +1,59 @@
+# herdr configuration. Managed by chezmoi: edit the source, then `chezmoi apply`.
+# Full reference: `herdr --default-config`. Reload a running server with
+# `herdr server reload-config`; check this file with `herdr config check`.
+
+onboarding = false
+
+[theme]
+# Take colours from the outer terminal (Ghostty), so one palette rules all.
+name = "terminal"
+auto_switch = false
+
+[keys]
+# Option+Space (left Option; Ghostty sends it as Alt). Space is the Neovim
+# leader too, so Option+Space reads as "herdr's leader". Avoids Ctrl+B, which
+# Claude Code (background task), Neovim (page up) and zsh (back a char) use.
+prefix = "alt+space"
+
+# Direct pane movement without the prefix. Ctrl+Alt is the modifier family
+# terminals and macOS leave free (herdr keyboard docs); Ctrl+Alt+arrows are
+# not used because Ghostty owns them.
+focus_pane_left = ["prefix+h", "ctrl+alt+h"]
+focus_pane_down = ["prefix+j", "ctrl+alt+j"]
+focus_pane_up = ["prefix+k", "ctrl+alt+k"]
+focus_pane_right = ["prefix+l", "ctrl+alt+l"]
+
+# Tabs and workspaces mirror the screen: the tab bar is horizontal (left/right),
+# the workspace sidebar vertical (up/down). Ctrl+Alt+Shift+H/J/K/L for keyboard
+# purists, Ctrl+Alt+arrows for two-modifier comfort; macOS only claims plain
+# Ctrl+arrows (Spaces, Mission Control) and Ghostty binds no Ctrl+Alt keys.
+previous_tab = ["prefix+p", "ctrl+alt+shift+h", "ctrl+alt+left"]
+next_tab = ["prefix+n", "ctrl+alt+shift+l", "ctrl+alt+right"]
+previous_workspace = ["ctrl+alt+shift+k", "ctrl+alt+up"]
+next_workspace = ["ctrl+alt+shift+j", "ctrl+alt+down"]
+switch_tab = ["prefix+1..9", "ctrl+alt+1..9"]
+move_tab_previous = "prefix+["
+move_tab_next = "prefix+]"
+
+# Jumping: goto finds any workspace, tab, pane or agent; the notification
+# target is the agent that most recently needs attention.
+goto = ["prefix+g", "ctrl+alt+g"]
+open_notification_target = ["prefix+o", "ctrl+alt+o"]
+next_agent = "ctrl+alt+a"
+zoom = ["prefix+z", "ctrl+alt+z"]
+last_pane = "prefix+;"
+
+# Mnemonic remaps: t for tab (was c); v/s split right/down as Neovim's
+# :vsplit/:split (s was settings, split-down was minus); settings to comma.
+new_tab = "prefix+t"
+split_vertical = "prefix+v"
+split_horizontal = "prefix+s"
+settings = "prefix+comma"
+
+[ui]
+# Selecting only highlights; copy explicitly with Cmd+C or Ctrl+C. Selecting
+# text to read it must not touch the clipboard.
+copy_on_select = false
+# Trackpads send many small scroll events; one line each keeps it smooth.
+mouse_scroll_lines = 1
+status_indicators = "dots"
