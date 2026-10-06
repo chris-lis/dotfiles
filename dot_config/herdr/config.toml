@@ -57,3 +57,23 @@ copy_on_select = false
 # Trackpads send many small scroll events; one line each keeps it smooth.
 mouse_scroll_lines = 1
 status_indicators = "dots"
+# Attention queue: blocked and finished agents first, across all machines.
+agent_panel_sort = "priority"
+# New tabs take a generated name; rename later with prefix+shift+t.
+prompt_new_tab_name = false
+
+# Notify when a background agent finishes or needs input. Off by default, which
+# also leaves the jump-to-notification key with nothing to jump to. "terminal"
+# hands the notification to Ghostty: a macOS notification that works over SSH
+# too. Herdr suppresses it for the tab you are looking at.
+[ui.toast]
+delivery = "terminal"
+
+# Background-agent notifications above already alert; herdr's own sounds
+# would double them.
+[ui.sound]
+enabled = false
+
+[experimental]
+# Keep panes' recent screen contents across a full herdr server restart.
+pane_history = true
