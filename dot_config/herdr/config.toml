@@ -38,7 +38,10 @@ move_tab_next = "prefix+]"
 # target is the agent that most recently needs attention.
 goto = ["prefix+g", "ctrl+alt+g"]
 open_notification_target = ["prefix+o", "ctrl+alt+o"]
-next_agent = "ctrl+alt+a"
+# Cycle agents across all workspaces with left Option+Tab, like an app
+# switcher. Neovim, zsh and Claude Code leave Option+Tab unused.
+next_agent = ["alt+tab", "ctrl+alt+a"]
+previous_agent = "alt+shift+tab"
 zoom = ["prefix+z", "ctrl+alt+z"]
 last_pane = "prefix+;"
 
@@ -48,6 +51,17 @@ new_tab = "prefix+t"
 split_vertical = "prefix+v"
 split_horizontal = "prefix+s"
 settings = "prefix+comma"
+
+# Yazi as a popup over the current tab, starting in the focused pane's
+# directory. Built-in herdr popup: the layout is untouched and the popup closes
+# when Yazi quits. Files opened from it use $EDITOR inside the popup.
+[[keys.command]]
+key = "prefix+backslash"
+type = "popup"
+command = 'cd "${HERDR_ACTIVE_PANE_CWD:-$PWD}" && exec yazi'
+description = "yazi file manager"
+width = "85%"
+height = "85%"
 
 [ui]
 # Selecting only highlights; copy explicitly with Cmd+C or Ctrl+C. Selecting
@@ -62,11 +76,13 @@ agent_panel_sort = "priority"
 prompt_new_tab_name = false
 
 # Notify when a background agent finishes or needs input. Off by default, which
-# also leaves the jump-to-notification key with nothing to jump to. "terminal"
-# hands the notification to Ghostty: a macOS notification that works over SSH
-# too. Herdr suppresses it for the tab you are looking at.
+# also leaves the jump-to-notification key with nothing to jump to. "system"
+# posts macOS notifications through terminal-notifier (brew), so they appear
+# whether or not Ghostty is focused, and clicking one brings Ghostty forward.
+# ("terminal" hands them to Ghostty, which drops them while it is focused.)
+# Herdr suppresses notifications for the tab you are looking at.
 [ui.toast]
-delivery = "terminal"
+delivery = "system"
 
 # Background-agent notifications above already alert; herdr's own sounds
 # would double them.
