@@ -91,7 +91,6 @@ $(printf '%s' "$input" | jq -j '
     (.rate_limits.five_hour.resets_at // "" | tostring),
     (.rate_limits.seven_day.used_percentage // "" | tostring),
     (.rate_limits.seven_day.resets_at // "" | tostring),
-    (.remote.session_id // ""),
     (.session_id // ""),
     (if .prompt_cache.caching_observed == true then (if .prompt_cache.warm == false then "cold" else "warm" end) else "" end),
     (.prompt_cache.expires_at // "" | tostring)
@@ -102,8 +101,8 @@ ctx_pct="${F[2]}"  ctx_in="${F[3]}"    ctx_size="${F[4]}"
 fast="${F[5]}"     effort="${F[6]}"
 fh_pct="${F[7]}"   fh_reset="${F[8]}"
 sd_pct="${F[9]}"   sd_reset="${F[10]}"
-remote_id="${F[11]}" session_id="${F[12]}"
-cache_state="${F[13]}" cache_exp="${F[14]}"
+session_id="${F[11]}"
+cache_state="${F[12]}" cache_exp="${F[13]}"
 [ -z "$cwd" ] && cwd="$(pwd)"
 
 # ── Threshold ramp ───────────────────────────────────────────────────────────
@@ -150,9 +149,6 @@ if [ -n "$is_remote" ]; then
   host_col="$C_REMOTE"
 else
   host_label=""; host_col="$C_WHITE"
-fi
-if [ -n "$remote_id" ]; then
-  host_label="☁${host_label:+ $host_label}"
 fi
 
 # ── Shorten path ─────────────────────────────────────────────────────────────
