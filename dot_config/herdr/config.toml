@@ -34,14 +34,17 @@ switch_tab = ["prefix+1..9", "ctrl+alt+1..9"]
 move_tab_previous = "prefix+["
 move_tab_next = "prefix+]"
 
-# Jumping: goto finds any workspace, tab, pane or agent; the notification
-# target is the agent that most recently needs attention.
+# Jumping: goto finds any workspace, tab, pane or agent.
 goto = ["prefix+g", "ctrl+alt+g"]
-open_notification_target = ["prefix+o", "ctrl+alt+o"]
 # Cycle agents across all workspaces with left Option+Tab, like an app
 # switcher. Neovim, zsh and Claude Code leave Option+Tab unused.
 next_agent = ["alt+tab", "ctrl+alt+a"]
 previous_agent = "alt+shift+tab"
+# Option+1..9 focuses agent row N of the sidebar. With agent_panel_sort =
+# "priority" that list is an attention queue, so Option+1 jumps to the agent
+# most in need of you. (open_notification_target only follows an in-app toast
+# that is still on screen, so it does nothing with system notifications.)
+focus_agent = "alt+1..9"
 zoom = ["prefix+z", "ctrl+alt+z"]
 last_pane = "prefix+;"
 
@@ -75,19 +78,16 @@ agent_panel_sort = "priority"
 # New tabs take a generated name; rename later with prefix+shift+t.
 prompt_new_tab_name = false
 
-# Notify when a background agent finishes or needs input. Off by default, which
-# also leaves the jump-to-notification key with nothing to jump to. "system"
-# posts macOS notifications through terminal-notifier (brew), so they appear
-# whether or not Ghostty is focused, and clicking one brings Ghostty forward.
-# ("terminal" hands them to Ghostty, which drops them while it is focused.)
-# Herdr suppresses notifications for the tab you are looking at.
+# No popups. herdr's jump-to-notification key only follows an in-app toast
+# still on screen, and Ghostty drops its notifications while focused, so
+# notifications added noise without a way back to the agent. The attention
+# queue plus Option+1 covers that, and a sound covers background agents.
 [ui.toast]
-delivery = "system"
+delivery = "off"
 
-# Background-agent notifications above already alert; herdr's own sounds
-# would double them.
+# Sound when an agent in a background workspace finishes or needs input.
 [ui.sound]
-enabled = false
+enabled = true
 
 [experimental]
 # Keep panes' recent screen contents across a full herdr server restart.
