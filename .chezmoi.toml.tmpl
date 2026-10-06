@@ -8,8 +8,12 @@
 
 {{- $git_email := promptStringOnce . "git.email" "Enter git email" $default_git_email -}}
 
+{{- /* Machine-specific opt-in, see the herdr-link-* scripts in dot_local/bin. */ -}}
+{{- $herdr_link := promptBoolOnce . "herdrLinkEnabled" "Enable herdr link on this machine" false -}}
+
 [data]
     env = {{ $env | quote }}
+    herdrLinkEnabled = {{ $herdr_link }}
 
 [data.git]
     email = {{ $git_email | quote }}

@@ -14,6 +14,12 @@ Library
 
 .config/nvim/lazy-lock.json
 
+# herdr link: machine-specific, so only where `chezmoi init` was answered yes
+# (data.herdrLinkEnabled).
+{{ if not (get . "herdrLinkEnabled") }}
+.local/bin/herdr-link-ssh-guard
+{{ end }}
+
 # Claude Code configuration
 # Guard against `chezmoi add -r ~/.claude` pulling in history.jsonl, sessions/
 # or projects/. Single-star is required: `.claude/**` silently defeats the
