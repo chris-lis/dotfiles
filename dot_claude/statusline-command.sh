@@ -57,7 +57,9 @@ G_META=$'\033[38;5;244m'
 # Nerd Font glyphs, written as byte escapes so the source stays pure ASCII
 # (BMP private-use characters are easily stripped by text tooling).
 GL_APPLE=$'\xef\x85\xb9'   # U+F179 apple
-GL_CLOUD=$'\xef\x83\x82'   # U+F0C2 cloud
+GL_LINUX=$'\xef\x85\xbc'   # U+F17C linux
+GL_WINDOWS=$'\xef\x85\xba' # U+F17A windows
+GL_CLOUD=$'\xef\x83\x82'   # U+F0C2 cloud: unknown OS
 GL_COLD=$'\xf3\xb0\x9c\x97'   # U+F0717 snowflake: prompt cache expiring / cold
 # Worktree glyph. Alternatives the user liked, to swap in later:
 #   $'\xf3\xb0\x91\x84'  U+F0444 md-ray_start_end (dot at each end)
@@ -125,14 +127,30 @@ _ramp() {
 }
 
 # ── Host indicator ───────────────────────────────────────────────────────────
-host=$(hostname -s 2>/dev/null || hostname 2>/dev/null)
-case "$host" in
-  *MacBook*|*macbook*)
-    # Local mac: icon alone is enough
-    host_glyph="$GL_APPLE"; host_label=""; host_col="$C_WHITE" ;;
-  *)
-    host_glyph="$GL_CLOUD"; host_label="$host"; host_col="$C_REMOTE" ;;
+# The icon is the OS this runs on. No host names are stored: a session counts as
+# remote when it descends from an SSH login (sshd sets SSH_CONNECTION and every
+# process started from that session inherits it, including a multiplexer's
+# server and the panes it spawns), or on Linux without a desktop session.
+# Remote sessions turn orange and show the live hostname; local ones show the
+# icon alone.
+os=$(uname -s 2>/dev/null)
+case "$os" in
+  Darwin)               host_glyph="$GL_APPLE" ;;
+  Linux)                host_glyph="$GL_LINUX" ;;
+  MINGW*|MSYS*|CYGWIN*) host_glyph="$GL_WINDOWS" ;;
+  *)                    host_glyph="$GL_CLOUD" ;;
 esac
+is_remote=""
+[ -n "${SSH_CONNECTION:-}${SSH_CLIENT:-}" ] && is_remote=1
+if [ "$os" = "Linux" ] && [ -z "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]; then
+  is_remote=1
+fi
+if [ -n "$is_remote" ]; then
+  host_label=$(hostname -s 2>/dev/null || hostname 2>/dev/null)
+  host_col="$C_REMOTE"
+else
+  host_label=""; host_col="$C_WHITE"
+fi
 if [ -n "$remote_id" ]; then
   host_label="☁${host_label:+ $host_label}"
 fi
