@@ -1,0 +1,32 @@
+#!/bin/bash
+# List saved herdr machines and switch them between enabled and disabled, by
+# label, without looking up profile IDs. Bound to a herdr popup key.
+# Enter (or space) switches the highlighted machine and keeps the list open;
+# j/k or the arrows move; q or Esc closes.
+set -euo pipefail
+HERDR=${HERDR_BIN_PATH:-herdr}
+self=$0
+
+case "${1:-}" in
+  list)
+    "$HERDR" machine list --json |
+      jq -r '.[] | [.id, (if .enabled then "enabled " else "disabled" end), .label, .target] | @tsv'
+    exit 0 ;;
+  switch)
+    if [[ "$3" == enabled* ]]; then "$HERDR" machine disable "$2" >/dev/null
+    else "$HERDR" machine enable "$2" >/dev/null; fi
+    exit 0 ;;
+esac
+
+if [ -z "$("$self" list)" ]; then
+  echo "No saved machines."
+  read -r -n 1 -s -p "Press any key to close."
+  exit 0
+fi
+
+"$self" list |
+  fzf --no-input --reverse --delimiter='\t' --with-nth=2.. \
+      --header='Enter/space: switch on or off · j/k: move · q/Esc: close' \
+      --bind "enter:execute-silent('$self' switch {1} {2})+reload('$self' list)" \
+      --bind "space:execute-silent('$self' switch {1} {2})+reload('$self' list)" \
+      --bind 'j:down,k:up,q:abort,esc:abort' || true

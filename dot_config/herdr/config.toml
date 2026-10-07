@@ -66,6 +66,16 @@ description = "yazi file manager"
 width = "85%"
 height = "85%"
 
+# Enable or disable a saved machine by label, from a popup. The script reads
+# the machines at runtime; IDs never need typing.
+[[keys.command]]
+key = "prefix+m"
+type = "popup"
+command = "$HOME/.local/bin/herdr-machine-toggle"
+description = "enable or disable a saved machine"
+width = 70
+height = 15
+
 [ui]
 # Selecting only highlights; copy explicitly with Cmd+C or Ctrl+C. Selecting
 # text to read it must not touch the clipboard.
