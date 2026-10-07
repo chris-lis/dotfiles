@@ -1,0 +1,16 @@
+#!/bin/bash
+# Forced command for the herdr_link key in ~/.ssh/authorized_keys. Lets a
+# connection through only while this account has a desktop session and its
+# herdr server is running (so a connection can never start a server that cannot
+# use the Keychain). It does not limit what runs: herdr sends shell scripts on
+# stdin (/bin/sh -s), so commands cannot be narrowed to herdr's own.
+set -u
+deny() { echo "herdr-link-ssh-guard: $*" >&2; exit 1; }
+
+launchctl print "gui/$(id -u)" >/dev/null 2>&1 ||
+  deny "$(id -un) is not logged in on the desktop"
+
+/opt/homebrew/bin/herdr status server 2>/dev/null | grep -q '^ *status: running' ||
+  deny "no herdr server is running for $(id -un); it starts at desktop login"
+
+exec "${SHELL:-/bin/zsh}" -c "${SSH_ORIGINAL_COMMAND:-exec ${SHELL:-/bin/zsh} -l}"

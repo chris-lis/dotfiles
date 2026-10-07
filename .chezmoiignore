@@ -18,6 +18,7 @@ Library
 # (data.herdrLinkEnabled).
 {{ if not (get . "herdrLinkEnabled") }}
 .local/bin/herdr-link-ssh-guard
+Library/LaunchAgents/dev.herdr-link.session.plist
 {{ end }}
 
 # Claude Code configuration
